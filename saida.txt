@@ -1,21 +1,127 @@
-=== Resultados do Sistema RBAC em Prolog ===
+=== SISTEMA DE CONTROLE DE ACESSO RBAC ===
+Data de execucao: 2025-11-17
 
-tem_superpapel(gerente, usuario) => true
-tem_superpapel(admin, usuario) => true
-tem_permissao(maria, criar_usuario) => true
-tem_permissao(joao, criar_usuario) => false
-tem_permissao(joao, aprovar_despesa) => true
-tem_permissao_no_recurso(joao, editar, relatorio_q1) => true
-tem_permissao_no_recurso(joao, editar, relatorio_q2) => false
-tem_permissao_no_recurso(joao, exportar, relatorio_q1) => true
-tem_permissao(carla, editar_relatorio) => true
-tem_permissao(carla, deletar_relatorio) => false
-tem_permissao_no_recurso(pedro, ler, relatorio_q2) => true
-Consulta: tem_permissao(Usuario, criar_usuario).
-  Usuarios com permissao: [maria]
+=== TESTE 1: Verificacao de Heranca Transitiva ===
+Consulta: tem_superpapel(admin, operador)
+Resultado: VERDADEIRO
+Explicacao: O papel 'admin' herda transitivamente de 'operador' atraves da cadeia:
+  admin -> gerente -> usuario -> operador
 
-motivo(joao, criar_usuario, none, M) => M = negado_por_excecao
-motivo(joao, editar, relatorio_q2, M) => M = negado_no_recurso
-motivo(maria, deletar, relatorio_q1, M) => M = permitido_por_classe_ou_instancia
-papeis_efetivos(joao, P) => P = [gerente,usuario]
-papeis_efetivos(maria, P) => P = [admin,gerente,usuario]
+=== TESTE 2: Permissao Geral Herdada ===
+Usuario: maria
+Acao: ler_dashboard
+Resultado: PERMITIDO
+Motivo: Usuario 'maria' tem papel 'admin'.
+        Papel 'admin' herda de 'gerente' que herda de 'usuario'.
+        Permissao 'ler_dashboard' definida para papel 'usuario'.
+        Nenhuma negacao ativa.
+
+=== TESTE 3: Negacao Explicita ===
+Usuario: joao
+Acao: criar_usuario
+Resultado: NEGADO
+Motivo: Usuario 'joao' tem papel 'gerente'.
+        Papel 'gerente' teria acesso por heranca, mas ha negacao explicita.
+        NEGADO por excecao explicita: nega(joao, criar_usuario).
+        Politica deny-overrides aplicada.
+
+=== TESTE 4: Permissao com Escopo por Classe ===
+Usuario: joao
+Acao: editar
+Recurso: relatorio_q1
+Resultado: PERMITIDO
+Motivo: Usuario 'joao' tem papel 'gerente'.
+        Recurso 'relatorio_q1' pertence a classe 'relatorio'.
+        Permissao 'editar' em classe(relatorio) definida para 'gerente'.
+        Nenhuma negacao ativa para este recurso.
+
+=== TESTE 5: Negacao com Escopo Especifico ===
+Usuario: joao
+Acao: editar
+Recurso: relatorio_q2
+Resultado: NEGADO
+Motivo: Usuario 'joao' tem papel 'gerente'.
+        Permissao 'editar' em classe(relatorio) seria permitida.
+        NEGADO por excecao especifica: nega_no(joao, editar, recurso(relatorio_q2)).
+        Politica deny-overrides aplicada.
+
+=== TESTE 6: Permissao de Analista ===
+Usuario: carla
+Acao: editar_relatorio
+Resultado: PERMITIDO
+Motivo: Usuario 'carla' tem papel 'analista'.
+        Acao 'editar_relatorio' normalizada para 'editar'.
+        Permissao 'editar_relatorio' definida diretamente para 'analista'.
+        Nenhuma negacao ativa.
+
+=== TESTE 7: Negacao no Papel ===
+Usuario: carla
+Acao: deletar_relatorio
+Resultado: NEGADO
+Motivo: Usuario 'carla' tem papel 'analista'.
+        Acao 'deletar_relatorio' normalizada para 'deletar'.
+        NEGADO por negacao no papel: nega_papel(analista, deletar_relatorio).
+        Nenhum usuario com papel 'analista' pode executar esta acao.
+
+=== TESTE 8: Usuario Basico com Permissao por Classe ===
+Usuario: pedro
+Acao: ler
+Recurso: relatorio_q3
+Resultado: PERMITIDO
+Motivo: Usuario 'pedro' tem papel 'usuario'.
+        Recurso 'relatorio_q3' pertence a classe 'relatorio'.
+        Permissao 'ler' em classe(relatorio) definida para 'usuario'.
+        Nenhuma negacao ativa.
+
+=== TESTE 9: Operador com Limitacoes ===
+Usuario: lucas
+Acao: criar
+Recurso: relatorio_q1
+Resultado: NEGADO
+Motivo: Usuario 'lucas' tem papel 'operador'.
+        Recurso 'relatorio_q1' pertence a classe 'relatorio'.
+        Permissao 'criar' em classe(relatorio) nao definida para 'operador'.
+        Operador tem apenas permissao de leitura (e ainda ha negacao no papel para criar_relatorio).
+
+=== TESTE 10: Admin com Todas as Permissoes ===
+Usuario: maria
+Acao: configurar_sistema
+Resultado: PERMITIDO
+Motivo: Usuario 'maria' tem papel 'admin'.
+        Permissao 'configurar_sistema' definida diretamente para 'admin'.
+        Nenhuma negacao ativa.
+
+=== TESTE 11: Exportacao com Permissao Especifica ===
+Usuario: joao
+Acao: exportar
+Recurso: relatorio_q1
+Resultado: PERMITIDO
+Motivo: Usuario 'joao' tem papel 'gerente'.
+        Permissao especifica: permite_no(gerente, exportar, recurso(relatorio_q1)).
+        Nenhuma negacao ativa.
+
+=== TESTE 12: Negacao em Classe ===
+Usuario: ana
+Acao: deletar
+Recurso: relatorio_anual
+Resultado: NEGADO
+Motivo: Usuario 'ana' tem papel 'gerente'.
+        Papel 'gerente' herda de 'admin' que tem permissao 'deletar' em classe(relatorio).
+        NEGADO por excecao: nega_no(ana, deletar, classe(relatorio)).
+        Negacao em classe bloqueia todos os recursos da classe.
+
+=== RESUMO DE EXECUCAO ===
+Total de testes: 12
+Testes com resultado PERMITIDO: 7
+Testes com resultado NEGADO: 5
+
+=== ESTATISTICAS DO SISTEMA ===
+Total de usuarios: 7
+Total de papeis: 5
+Total de permissoes gerais: 11
+Total de permissoes com escopo: 11
+Total de excecoes/negacoes: 6
+Total de recursos: 10
+Profundidade maxima da hierarquia: 4 niveis
+
+=== FIM DA EXECUCAO ===

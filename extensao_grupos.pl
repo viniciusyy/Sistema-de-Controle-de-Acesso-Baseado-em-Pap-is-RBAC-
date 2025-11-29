@@ -1,20 +1,36 @@
+% =====================================
+% Extensao obrigatoria: grupos / times
+% Usuarios herdam papeis dos grupos
+% =====================================
+
 :- multifile tem_papel/2.
-:- dynamic  tem_papel/2.
 
-% =====================================
-% EXTENSÃO: Grupos / Times
-% Usuário herda papéis do(s) seu(s) grupo(s)
-% =====================================
 
-% Os fatos:
-%   grupo/1, membro_de/2, grupo_tem_papel/2
-% estão em entrada.txt.
-% Aqui só definimos a regra adicional para tem_papel/2.
+:- dynamic grupo/1.
+:- dynamic membro_de/2.
+:- dynamic grupo_tem_papel/2.
 
-% Regra adicional:
-% se User é membro de Grupo, e Grupo tem Papel,
-% então User também tem esse Papel.
+% -------------------------------------
+% Exemplos de grupos (extensao)
+% (podem ser usados na apresentacao)
+% -------------------------------------
 
+grupo(ti).
+grupo(financeiro).
+grupo(rh).
+
+membro_de(joao, ti).
+membro_de(maria, ti).
+membro_de(carla, financeiro).
+membro_de(pedro, rh).
+membro_de(ana, financeiro).
+% lucas e roberto ficam apenas com os papeis diretos de entrada.txt
+
+grupo_tem_papel(ti,         gerente).
+grupo_tem_papel(financeiro, analista).
+grupo_tem_papel(rh,         usuario).
+
+% Usuario herda papeis de seus grupos
 tem_papel(User, Papel) :-
     membro_de(User, Grupo),
     grupo_tem_papel(Grupo, Papel).

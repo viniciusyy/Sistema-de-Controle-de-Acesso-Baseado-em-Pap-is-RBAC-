@@ -1,113 +1,139 @@
-% =====================================
-% entrada.txt - Base de fatos RBAC
-% =====================================
-
 :- multifile tem_papel/2.
 :- dynamic  tem_papel/2.
 
-% -------------------------
-% PAPÉIS
-% -------------------------
+% =========================
+% PAPÉIS E HIERARQUIA
+% =========================
 papel(admin).
 papel(gerente).
 papel(usuario).
 papel(analista).
+papel(operador).
 
-% -------------------------
-% HERANÇA DE PAPÉIS
-% admin > gerente > usuario
-% analista é paralelo
-% -------------------------
-herda_papel(admin,   gerente).
+% Hierarquia: admin > gerente > usuario > operador
+herda_papel(admin, gerente).
 herda_papel(gerente, usuario).
+herda_papel(usuario, operador).
 
-% -------------------------
-% USUÁRIOS E PAPÉIS DIRETOS
-% -------------------------
-tem_papel(joao,   gerente).
-tem_papel(maria,  admin).
-tem_papel(carla,  analista).
-tem_papel(pedro,  usuario).
-tem_papel(alice,  usuario).   % usuário extra para testes
+% =========================
+% USUÁRIOS E SEUS PAPÉIS
+% =========================
+tem_papel(maria, admin).
+tem_papel(joao, gerente).
+tem_papel(carla, analista).
+tem_papel(pedro, usuario).
+tem_papel(lucas, operador).
+tem_papel(ana, gerente).
+tem_papel(roberto, usuario).
 
-% -------------------------
-% PERMISSÕES GERAIS (permite/2)
-% -------------------------
+% =========================
+% PERMISSÕES GERAIS (sem escopo)
+% permite(Papel, Acao)
+% =========================
+permite(operador, ler_dashboard).
 permite(usuario, ler_dashboard).
-permite(usuario, abrir_chamado).
-
+permite(usuario, criar_relatorio).
 permite(gerente, aprovar_despesa).
-permite(gerente, ver_relatorio_financeiro).
-
+permite(gerente, revisar_relatorio).
 permite(admin, criar_usuario).
+permite(admin, deletar_usuario).
 permite(admin, configurar_sistema).
-
-% Analista focado em relatórios
 permite(analista, ler_relatorio).
 permite(analista, editar_relatorio).
-permite(analista, exportar_relatorio).
+permite(analista, exportar_dados).
 
-% -------------------------
-% PERMISSÕES COM ESCOPO (permite_no/3)
-% -------------------------
-% Por classe de recurso
-permite_no(usuario,  ler,     classe(relatorio)).
-permite_no(gerente,  editar,  classe(relatorio)).
-permite_no(admin,    deletar, classe(relatorio)).
-
-% Permissão específica de instância
-permite_no(gerente,  exportar, recurso(relatorio_q1)).
-
-% Permissões de analista em planilhas
-permite_no(analista, ler,    classe(planilha)).
+% =========================
+% PERMISSÕES COM ESCOPO
+% permite_no(Papel, Acao, RecursoOuClasse)
+% classe de recurso: classe(tipo)
+% instância: recurso(nome)
+% =========================
+permite_no(operador, ler, classe(relatorio)).
+permite_no(usuario, ler, classe(relatorio)).
+permite_no(usuario, criar, classe(relatorio)).
+permite_no(gerente, editar, classe(relatorio)).
+permite_no(gerente, aprovar, classe(relatorio)).
+permite_no(admin, deletar, classe(relatorio)).
+permite_no(admin, deletar, classe(usuario)).
+permite_no(gerente, exportar, recurso(relatorio_q1)).
+permite_no(gerente, exportar, recurso(relatorio_q2)).
 permite_no(analista, editar, classe(planilha)).
+permite_no(analista, exportar, classe(planilha)).
 
-% -------------------------
+% =========================
 % RECURSOS E SUAS CLASSES
-% -------------------------
+% =========================
 pertence_a(relatorio_q1, relatorio).
 pertence_a(relatorio_q2, relatorio).
+pertence_a(relatorio_q3, relatorio).
+pertence_a(relatorio_anual, relatorio).
 pertence_a(planilha_financeira, planilha).
-pertence_a(planilha_rh,         planilha).
+pertence_a(planilha_vendas, planilha).
+pertence_a(planilha_estoque, planilha).
+pertence_a(usuario_joao, usuario).
+pertence_a(usuario_maria, usuario).
+pertence_a(usuario_pedro, usuario).
 
-% -------------------------
+% =========================
 % EXCEÇÕES / NEGAÇÕES
-% (deny-overrides)
-% -------------------------
-% Negação geral por usuário
-nega(joao, criar_usuario).          % joao não pode criar usuário
+% negam permissões (deny-overrides)
+% =========================
+nega(joao, criar_usuario).
+nega(joao, deletar_usuario).
+nega_no(joao, editar, recurso(relatorio_q2)).
+nega_no(ana, deletar, classe(relatorio)).
+nega_papel(analista, deletar_relatorio).
+nega_papel(operador, criar_relatorio).
 
-% Negação específica em recurso
-nega_no(joao, editar, recurso(relatorio_q2)).  % joao não pode editar relatorio_q2
-
-% Negação por papel (em forma base!)
-nega_papel(analista, deletar).      % ninguém com analista pode deletar nada
-
-% -------------------------
-% SINÔNIMOS DE AÇÕES (normalização)
-% -------------------------
-acao_equivalente(editar_relatorio,   editar).
-acao_equivalente(ler_relatorio,      ler).
+% =========================
+% SINÔNIMOS DE AÇÕES (opcional)
+% =========================
+acao_equivalente(editar_relatorio, editar).
+acao_equivalente(ler_relatorio, ler).
+acao_equivalente(deletar_relatorio, deletar).
+acao_equivalente(criar_relatorio, criar).
+acao_equivalente(aprovar_relatorio, aprovar).
 acao_equivalente(exportar_relatorio, exportar).
-acao_equivalente(deletar_relatorio,  deletar).
 
-acao_equivalente(visualizar, ler).
-acao_equivalente(modificar,  editar).
-acao_equivalente(remover,    deletar).
+% =========================
+% CONSULTAS DE TESTE
+% =========================
+% Teste 1: Herança transitiva
+% ?- tem_superpapel(admin, operador).
+% Esperado: true
 
-% -------------------------
-% EXTENSÃO: GRUPOS / TIMES
-% -------------------------
-grupo(ti).
-grupo(financeiro).
-grupo(rh).
+% Teste 2: Permissão herdada
+% ?- tem_permissao(maria, ler_dashboard).
+% Esperado: true (admin herda de gerente herda de usuario)
 
-membro_de(joao,  ti).
-membro_de(maria, ti).
-membro_de(carla, financeiro).
-membro_de(pedro, rh).
-membro_de(alice, rh).
+% Teste 3: Negação explícita
+% ?- tem_permissao(joao, criar_usuario).
+% Esperado: false (negado explicitamente)
 
-grupo_tem_papel(ti,          gerente).
-grupo_tem_papel(financeiro,  analista).
-grupo_tem_papel(rh,          usuario).
+% Teste 4: Permissão com escopo por classe
+% ?- tem_permissao_no_recurso(joao, editar, relatorio_q1).
+% Esperado: true (gerente pode editar classe relatorio)
+
+% Teste 5: Negação com escopo específico
+% ?- tem_permissao_no_recurso(joao, editar, relatorio_q2).
+% Esperado: false (negado explicitamente para q2)
+
+% Teste 6: Permissão de analista
+% ?- tem_permissao(carla, editar_relatorio).
+% Esperado: true
+
+% Teste 7: Negação no papel
+% ?- tem_permissao(carla, deletar_relatorio).
+% Esperado: false (nega_papel para analista)
+
+% Teste 8: Usuário básico
+% ?- tem_permissao_no_recurso(pedro, ler, relatorio_q3).
+% Esperado: true (usuario pode ler classe relatorio)
+
+% Teste 9: Operador com limitações
+% ?- tem_permissao_no_recurso(lucas, criar, relatorio_q1).
+% Esperado: false (operador não pode criar)
+
+% Teste 10: Admin com todas as permissões
+% ?- tem_permissao(maria, configurar_sistema).
+% Esperado: true
