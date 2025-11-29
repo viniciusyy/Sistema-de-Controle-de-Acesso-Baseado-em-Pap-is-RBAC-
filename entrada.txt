@@ -1,6 +1,9 @@
 % =====================================
-% Base de fatos RBAC
+% entrada.txt - Base de fatos RBAC
 % =====================================
+
+:- multifile tem_papel/2.
+:- dynamic  tem_papel/2.
 
 % -------------------------
 % PAPÉIS
@@ -13,7 +16,7 @@ papel(analista).
 % -------------------------
 % HERANÇA DE PAPÉIS
 % admin > gerente > usuario
-% analista é paralelo (sem herança)
+% analista é paralelo
 % -------------------------
 herda_papel(admin,   gerente).
 herda_papel(gerente, usuario).
@@ -29,8 +32,6 @@ tem_papel(alice,  usuario).   % usuário extra para testes
 
 % -------------------------
 % PERMISSÕES GERAIS (permite/2)
-% As ações podem estar em forma "descritiva" ou base;
-% a normalização será feita por acao_base/2.
 % -------------------------
 permite(usuario, ler_dashboard).
 permite(usuario, abrir_chamado).
@@ -49,16 +50,16 @@ permite(analista, exportar_relatorio).
 % -------------------------
 % PERMISSÕES COM ESCOPO (permite_no/3)
 % -------------------------
-% Por classe
-permite_no(usuario,  ler,    classe(relatorio)).
-permite_no(gerente,  editar, classe(relatorio)).
+% Por classe de recurso
+permite_no(usuario,  ler,     classe(relatorio)).
+permite_no(gerente,  editar,  classe(relatorio)).
 permite_no(admin,    deletar, classe(relatorio)).
 
 % Permissão específica de instância
 permite_no(gerente,  exportar, recurso(relatorio_q1)).
 
-% Permissão de analista em planilhas
-permite_no(analista, ler, classe(planilha)).
+% Permissões de analista em planilhas
+permite_no(analista, ler,    classe(planilha)).
 permite_no(analista, editar, classe(planilha)).
 
 % -------------------------
@@ -74,21 +75,21 @@ pertence_a(planilha_rh,         planilha).
 % (deny-overrides)
 % -------------------------
 % Negação geral por usuário
-nega(joao, criar_usuario).    % joao não pode criar usuário, mesmo herdando de admin (se tivesse)
+nega(joao, criar_usuario).          % joao não pode criar usuário
 
 % Negação específica em recurso
 nega_no(joao, editar, recurso(relatorio_q2)).  % joao não pode editar relatorio_q2
 
 % Negação por papel (em forma base!)
-nega_papel(analista, deletar).  % ninguém com papel analista pode deletar
+nega_papel(analista, deletar).      % ninguém com analista pode deletar nada
 
 % -------------------------
 % SINÔNIMOS DE AÇÕES (normalização)
 % -------------------------
-acao_equivalente(editar_relatorio,  editar).
-acao_equivalente(ler_relatorio,     ler).
+acao_equivalente(editar_relatorio,   editar).
+acao_equivalente(ler_relatorio,      ler).
 acao_equivalente(exportar_relatorio, exportar).
-acao_equivalente(deletar_relatorio, deletar).
+acao_equivalente(deletar_relatorio,  deletar).
 
 acao_equivalente(visualizar, ler).
 acao_equivalente(modificar,  editar).
@@ -96,7 +97,6 @@ acao_equivalente(remover,    deletar).
 
 % -------------------------
 % EXTENSÃO: GRUPOS / TIMES
-% (grupos e papéis de grupo)
 % -------------------------
 grupo(ti).
 grupo(financeiro).
@@ -111,6 +111,3 @@ membro_de(alice, rh).
 grupo_tem_papel(ti,          gerente).
 grupo_tem_papel(financeiro,  analista).
 grupo_tem_papel(rh,          usuario).
-
-% Agora, além dos tem_papel/2 diretos,
-% usuários também herdarão papéis via grupos.

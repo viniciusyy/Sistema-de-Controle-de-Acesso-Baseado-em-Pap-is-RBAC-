@@ -1,0 +1,21 @@
+=== Resultados do Sistema RBAC em Prolog ===
+
+tem_superpapel(gerente, usuario) => true
+tem_superpapel(admin, usuario) => true
+tem_permissao(maria, criar_usuario) => true
+tem_permissao(joao, criar_usuario) => false
+tem_permissao(joao, aprovar_despesa) => true
+tem_permissao_no_recurso(joao, editar, relatorio_q1) => true
+tem_permissao_no_recurso(joao, editar, relatorio_q2) => false
+tem_permissao_no_recurso(joao, exportar, relatorio_q1) => true
+tem_permissao(carla, editar_relatorio) => true
+tem_permissao(carla, deletar_relatorio) => false
+tem_permissao_no_recurso(pedro, ler, relatorio_q2) => true
+Consulta: tem_permissao(Usuario, criar_usuario).
+  Usuarios com permissao: [maria]
+
+motivo(joao, criar_usuario, none, M) => M = negado_por_excecao
+motivo(joao, editar, relatorio_q2, M) => M = negado_no_recurso
+motivo(maria, deletar, relatorio_q1, M) => M = permitido_por_classe_ou_instancia
+papeis_efetivos(joao, P) => P = [gerente,usuario]
+papeis_efetivos(maria, P) => P = [admin,gerente,usuario]
