@@ -1,5 +1,4 @@
 % =====================================
-% permissoes.pl
 % Normalização de ações e verificação de permissão
 % =====================================
 
