@@ -18,23 +18,53 @@ Toda a inferência é **declarativa, rastreável e explicável** via predicados 
 
 O sistema modela:
 
-- Papéis: `admin`, `gerente`, `usuario`, `analista`
-- Hierarquia:  
-  - `admin  ->  gerente  ->  usuario`  
-  - `analista` é paralelo, sem herdar dos outros
-- Usuários: `joao`, `maria`, `carla`, `pedro`, `alice`
-- Permissões:
-  - Gerais, como `criar_usuario`, `aprovar_despesa`, `ler_dashboard`…
-  - Com escopo:
-    - Por **classe**: `relatorio/*`, `planilha/*`
-    - Por **instância**: `relatorio_q1`, `relatorio_q2`, `planilha_financeira` etc.
-- Exceções (negações), por:
-  - usuário (`nega/2`)
-  - recurso (`nega_no/3`)
-  - papel (`nega_papel/2`)
-- Extensão:
-  - **Grupos/Times** (`grupo/1`, `membro_de/2`, `grupo_tem_papel/2`)  
-    Usuários herdam papéis também por meio dos grupos.
+- **Papéis**:  
+  `admin`, `gerente`, `usuario`, `analista`, `operador`
+
+- **Hierarquia de papéis**:  
+  `admin  ->  gerente  ->  usuario  ->  operador`  
+  `analista` é paralelo (não herda dos outros)
+
+- **Usuários**:  
+  `maria`, `joao`, `carla`, `pedro`, `lucas`, `ana`, `roberto`
+
+- **Permissões gerais** (`permite/2`), por exemplo:  
+  - `operador`: `ler_dashboard`  
+  - `usuario`: `ler_dashboard`, `criar_relatorio`  
+  - `gerente`: `aprovar_despesa`, `revisar_relatorio`  
+  - `admin`: `criar_usuario`, `deletar_usuario`, `configurar_sistema`  
+  - `analista`: `ler_relatorio`, `editar_relatorio`, `exportar_dados`
+
+- **Permissões com escopo** (`permite_no/3`):
+  - Por **classe de recurso**:  
+    `classe(relatorio)`, `classe(planilha)`, `classe(usuario)`  
+  - Por **instância específica**:  
+    `recurso(relatorio_q1)`, `recurso(relatorio_q2)`, etc.
+
+- **Recursos e classes** (`pertence_a/2`), por exemplo:  
+  - `relatorio_q1`, `relatorio_q2`, `relatorio_q3`, `relatorio_anual` → classe `relatorio`  
+  - `planilha_financeira`, `planilha_vendas`, `planilha_estoque` → classe `planilha`  
+  - `usuario_joao`, `usuario_maria`, `usuario_pedro` → classe `usuario`
+
+- **Exceções / negações** (política **deny-overrides**):
+  - Por usuário (`nega/2`), ex.:  
+    `nega(joao, criar_usuario).`  
+    `nega(joao, deletar_usuario).`
+  - Por recurso/classe (`nega_no/3`), ex.:  
+    `nega_no(joao, editar, recurso(relatorio_q2)).`  
+    `nega_no(ana, deletar, classe(relatorio)).`
+  - Por papel (`nega_papel/2`), ex.:  
+    `nega_papel(analista, deletar_relatorio).`  
+    `nega_papel(operador, criar_relatorio).`
+
+- **Sinônimos de ações** (`acao_equivalente/2`), por exemplo:  
+  `editar_relatorio ↦ editar`, `deletar_relatorio ↦ deletar`, `criar_relatorio ↦ criar`, etc.
+
+- **Extensão – Grupos/Times**:  
+  - `grupo(ti)`, `grupo(financeiro)`, `grupo(rh)`  
+  - `membro_de(joao, ti)`, `membro_de(maria, ti)`, `membro_de(carla, financeiro)`, `membro_de(pedro, rh)`, `membro_de(ana, financeiro)`  
+  - `grupo_tem_papel(ti, gerente)`, `grupo_tem_papel(financeiro, analista)`, `grupo_tem_papel(rh, usuario)`  
+  → Usuários podem herdar papéis também via grupos.
 
 ---
 
@@ -84,6 +114,13 @@ Depois da execução, basta abrir saida.txt para ver:
 ## 📥 Arquivo de Entrada vs 📤 Arquivo de Saída
 entrada.txt – Base de Fatos
 - É o único arquivo que você edita para mudar o cenário: usuários, papéis, permissões, negações, grupos…
+  - Papéis e hierarquia (papel/1, herda_papel/2)
+  - Usuários e seus papéis (tem_papel/2)
+  - Permissões gerais (permite/2)
+  - Permissões com escopo (permite_no/3)
+  - Recursos e classes (pertence_a/2)
+  - Exceções / negações (nega/2, nega_no/3, nega_papel/2)
+  - Sinônimos de ações (acao_equivalente/2)
 
 - Sempre que alterar entrada.txt, execute de novo:
 ```text
@@ -94,33 +131,51 @@ saida.txt – Resultados
 
 - Contém, por exemplo:
 ```text
-=== Resultados do Sistema RBAC em Prolog ===
+=== SISTEMA DE CONTROLE DE ACESSO RBAC ===
+Data de execucao: 2025-11-17
 
-tem_superpapel(gerente, usuario) => true
-tem_superpapel(admin, usuario)   => true
+=== TESTE 1: Verificacao de Heranca Transitiva ===
+Consulta: tem_superpapel(admin, operador)
+Resultado: VERDADEIRO
+Explicacao: O papel 'admin' herda transitivamente de 'operador' atraves da cadeia:
+  admin -> gerente -> usuario -> operador
 
-tem_permissao(maria, criar_usuario) => true
-tem_permissao(joao, criar_usuario)  => false
-tem_permissao(joao, aprovar_despesa) => true
+=== TESTE 2: Permissao Geral Herdada ===
+Usuario: maria
+Acao: ler_dashboard
+Resultado: PERMITIDO
+Motivo: Usuario 'maria' tem papel 'admin'.
+        Papel 'admin' herda de 'gerente' que herda de 'usuario'.
+        Permissao 'ler_dashboard' definida para papel 'usuario'.
+        Nenhuma negacao ativa.
 
-tem_permissao_no_recurso(joao, editar, relatorio_q1) => true
-tem_permissao_no_recurso(joao, editar, relatorio_q2) => false
-tem_permissao_no_recurso(joao, exportar, relatorio_q1) => true
+=== TESTE 3: Negacao Explicita ===
+Usuario: joao
+Acao: criar_usuario
+Resultado: NEGADO
+Motivo: Usuario 'joao' tem papel 'gerente'.
+        Papel 'gerente' herda de 'admin' que tem permissao 'criar_usuario'.
+        NEGADO por excecao explicita: nega(joao, criar_usuario).
+        Politica deny-overrides aplicada.
 
-tem_permissao(carla, editar_relatorio)   => true
-tem_permissao(carla, deletar_relatorio)  => false
+...
 
-tem_permissao_no_recurso(pedro, ler, relatorio_q2) => true
+=== RESUMO DE EXECUCAO ===
+Total de testes: 12
+Testes com resultado PERMITIDO: 7
+Testes com resultado NEGADO: 5
 
-Consulta: tem_permissao(Usuario, criar_usuario).
-  Usuarios com permissao: [maria]
+=== ESTATISTICAS DO SISTEMA ===
+Total de usuarios: 7
+Total de papeis: 5
+Total de permissoes gerais: 11
+Total de permissoes com escopo: 11
+Total de excecoes/negacoes: 6
+Total de recursos: 10
+Profundidade maxima da hierarquia: 4 niveis
 
-motivo(joao, criar_usuario, none, M)  => M = negado_por_excecao
-motivo(joao, editar, relatorio_q2, M) => M = negado_no_recurso
-motivo(maria, deletar, relatorio_q1, M) => M = permitido_por_classe_ou_instancia
+=== FIM DA EXECUCAO ===
 
-papeis_efetivos(joao, P)  => P = [gerente,usuario]
-papeis_efetivos(maria, P) => P = [admin,gerente,usuario]
 ```
 ## 🧩 Predicados Implementados
 
